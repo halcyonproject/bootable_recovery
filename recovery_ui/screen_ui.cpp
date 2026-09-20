@@ -194,7 +194,10 @@ int TextMenu::DrawItems(int x, int y, int screen_width, bool long_press) const {
 
   int item_container_offset = offset; // store it for drawing scrollbar on most top
 
-  for (size_t i = MenuStart(); i < MenuEnd(); ++i) {
+  size_t start = MenuStart();
+  size_t end = MenuEnd();
+
+  for (size_t i = start; i < end; ++i) {
     const auto selected = i == selection();
 
     // Draw the highlight bar.
@@ -203,7 +206,10 @@ int TextMenu::DrawItems(int x, int y, int screen_width, bool long_press) const {
                                     : UIElement::MENU_BG);
 
     int bar_height = padding + char_height_ + padding;
-    draw_funcs_.DrawHighlightBar(padding + x, y + offset, screen_width - (padding + x) * 2, bar_height);
+    bool round_top = (i == start);
+    bool round_bottom = (i == end - 1);
+    draw_funcs_.DrawHighlightBar(padding + x, y + offset, screen_width - (padding + x) * 2,
+                                 bar_height, round_top, round_bottom);
 
     draw_funcs_.SetColor(selected ? UIElement::MENU_SEL_FG : UIElement::MENU);
     offset += draw_funcs_.DrawTextLine(padding * 2 + x, y + offset, TextItem(i), false /* bold */);
@@ -603,7 +609,7 @@ void ScreenRecoveryUI::SetColor(UIElement e) const {
       if (fastbootd_logo_enabled_)
         gr_color(0xe6 * 0.20, 0x51 * 0.20, 0x00 * 0.20, 255);
       else
-        gr_color(0x7c * 0.20, 0x4d * 0.20, 0xff * 0.20, 255);
+        gr_color(0x3c, 0x32, 0x33, 255);
       break;
     case UIElement::MENU_SEL_BG:
     case UIElement::SCROLLBAR:
@@ -728,13 +734,18 @@ int ScreenRecoveryUI::DrawHorizontalRule(int y) const {
 }
 
 void ScreenRecoveryUI::DrawHighlightBar(int x, int y, int width, int height) const {
+  DrawHighlightBar(x, y, width, height, true, true);
+}
+
+void ScreenRecoveryUI::DrawHighlightBar(int x, int y, int width, int height,
+                                       bool round_top, bool round_bottom) const {
   if (y + height > ScreenHeight())
     height = ScreenHeight() - y;
   if (x > 0 || width < ScreenWidth()) {
     static const int default_radius_dp =
         android::base::GetIntProperty("ro.recovery.ui.menu_radius", 16);
     int radius = std::min(PixelsFromDp(default_radius_dp), height / 2);
-    gr_fill_round_rect(x, y, x + width, y + height, radius);
+    gr_fill_round_rect(x, y, x + width, y + height, radius, round_top, round_bottom);
   } else {
     gr_fill(x, y, x + width, y + height);
   }

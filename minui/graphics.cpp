@@ -313,29 +313,36 @@ void gr_fill(int x1, int y1, int x2, int y2) {
   }
 }
 
-void gr_fill_round_rect(int x1, int y1, int x2, int y2, int radius) {
+void gr_fill_round_rect(int x1, int y1, int x2, int y2, int radius,
+                        bool round_top, bool round_bottom) {
   if (x1 >= x2 || y1 >= y2) return;
   radius = std::max(0, radius);
   radius = std::min(radius, std::min((x2 - x1) / 2, (y2 - y1) / 2));
-  if (radius <= 0) {
+  if (radius <= 0 || (!round_top && !round_bottom)) {
     gr_fill(x1, y1, x2, y2);
     return;
   }
 
-  for (int r = 0; r < radius; ++r) {
-    float dy = radius - (r + 0.5f);
-    int dx = std::round(std::sqrt(std::max(0.0f, static_cast<float>(radius * radius) - dy * dy)));
-
-    // Top row at y1 + r
-    gr_fill(x1 + radius - dx, y1 + r, x2 - radius + dx, y1 + r + 1);
-
-    // Bottom row at y2 - 1 - r
-    gr_fill(x1 + radius - dx, y2 - 1 - r, x2 - radius + dx, y2 - r);
+  if (round_top) {
+    for (int r = 0; r < radius; ++r) {
+      float dy = radius - (r + 0.5f);
+      int dx = std::round(std::sqrt(std::max(0.0f, static_cast<float>(radius * radius) - dy * dy)));
+      gr_fill(x1 + radius - dx, y1 + r, x2 - radius + dx, y1 + r + 1);
+    }
   }
 
-  // Center rectangle between top and bottom caps
-  if (y1 + radius < y2 - radius) {
-    gr_fill(x1, y1 + radius, x2, y2 - radius);
+  int mid_y1 = round_top ? y1 + radius : y1;
+  int mid_y2 = round_bottom ? y2 - radius : y2;
+  if (mid_y1 < mid_y2) {
+    gr_fill(x1, mid_y1, x2, mid_y2);
+  }
+
+  if (round_bottom) {
+    for (int r = 0; r < radius; ++r) {
+      float dy = radius - (r + 0.5f);
+      int dx = std::round(std::sqrt(std::max(0.0f, static_cast<float>(radius * radius) - dy * dy)));
+      gr_fill(x1 + radius - dx, y2 - 1 - r, x2 - radius + dx, y2 - r);
+    }
   }
 }
 
