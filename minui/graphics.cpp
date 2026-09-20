@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
 
 #include <android-base/properties.h>
@@ -306,6 +308,32 @@ void gr_fill(int x1, int y1, int x2, int y2) {
       }
       incr_y(&p, row_pixels);
     }
+  }
+}
+
+void gr_fill_round_rect(int x1, int y1, int x2, int y2, int radius) {
+  if (x1 >= x2 || y1 >= y2) return;
+  radius = std::max(0, radius);
+  radius = std::min(radius, std::min((x2 - x1) / 2, (y2 - y1) / 2));
+  if (radius <= 0) {
+    gr_fill(x1, y1, x2, y2);
+    return;
+  }
+
+  for (int r = 0; r < radius; ++r) {
+    float dy = radius - (r + 0.5f);
+    int dx = std::round(std::sqrt(std::max(0.0f, static_cast<float>(radius * radius) - dy * dy)));
+
+    // Top row at y1 + r
+    gr_fill(x1 + radius - dx, y1 + r, x2 - radius + dx, y1 + r + 1);
+
+    // Bottom row at y2 - 1 - r
+    gr_fill(x1 + radius - dx, y2 - 1 - r, x2 - radius + dx, y2 - r);
+  }
+
+  // Center rectangle between top and bottom caps
+  if (y1 + radius < y2 - radius) {
+    gr_fill(x1, y1 + radius, x2, y2 - radius);
   }
 }
 

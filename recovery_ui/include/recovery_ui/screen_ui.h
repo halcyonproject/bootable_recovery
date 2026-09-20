@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 
+#include <algorithm>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -349,7 +350,7 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
   }
 
   int MenuItemSpacing() const override {
-    return 8;
+    return std::max(8, PixelsFromDp(6));
   }
 
  protected:

@@ -730,7 +730,14 @@ int ScreenRecoveryUI::DrawHorizontalRule(int y) const {
 void ScreenRecoveryUI::DrawHighlightBar(int x, int y, int width, int height) const {
   if (y + height > ScreenHeight())
     height = ScreenHeight() - y;
-  gr_fill(x, y, x + width, y + height);
+  if (x > 0 || width < ScreenWidth()) {
+    static const int default_radius_dp =
+        android::base::GetIntProperty("ro.recovery.ui.menu_radius", 16);
+    int radius = std::min(PixelsFromDp(default_radius_dp), height / 2);
+    gr_fill_round_rect(x, y, x + width, y + height, radius);
+  } else {
+    gr_fill(x, y, x + width, y + height);
+  }
 }
 
 void ScreenRecoveryUI::DrawScrollBar(int y, int height) const {
