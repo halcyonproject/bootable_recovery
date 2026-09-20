@@ -822,7 +822,7 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
   int y = margin_height_;
 
   if (menu_) {
-    auto& logo = fastbootd_logo_enabled_ ? fastbootd_logo_ : default_logo;
+    auto& logo = (fastbootd_logo_enabled_ && fastbootd_logo_) ? fastbootd_logo_ : default_logo;
     auto logo_width = gr_get_width(logo.get());
     auto logo_height = gr_get_height(logo.get());
     auto centered_x = ScreenWidth() / 2 - logo_width / 2;
@@ -870,7 +870,8 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
 // Draws the battery capacity on the screen. Should only be called with updateMutex locked.
 void ScreenRecoveryUI::draw_battery_capacity_locked() {
   int x;
-  int y = margin_height_ + gr_get_height(default_logo.get());
+  auto& logo = (fastbootd_logo_enabled_ && fastbootd_logo_) ? fastbootd_logo_ : default_logo;
+  int y = margin_height_ + gr_get_height(logo.get());
   int icon_x, icon_y, icon_h, icon_w;
 
   if (is_battery_less) return;
