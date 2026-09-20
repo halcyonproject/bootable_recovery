@@ -584,10 +584,7 @@ void ScreenRecoveryUI::draw_foreground_locked() {
 void ScreenRecoveryUI::SetColor(UIElement e) const {
   switch (e) {
     case UIElement::BATTERY_LOW:
-      if (fastbootd_logo_enabled_)
-        gr_color(0xfd, 0x35, 0x35, 255);
-      else
-        gr_color(255, 255, 255, 255);
+      gr_color(0xfd, 0x35, 0x35, 255);
       break;
     case UIElement::INFO:
         gr_color(255, 255, 255, 255);
@@ -600,9 +597,9 @@ void ScreenRecoveryUI::SetColor(UIElement e) const {
       break;
     case UIElement::MENU_BG:
       if (fastbootd_logo_enabled_)
-        gr_color(0xe6 * 0.20, 0x51 * 0.20, 0x00 * 0.20, 255);
+        gr_color(0x8e * 0.20, 0xff * 0.20, 0xec * 0.20, 255);
       else
-        gr_color(0x3c, 0x32, 0x33, 255);
+        gr_color(0xff * 0.20, 0xff * 0.20, 0xff * 0.20, 255);
       break;
     case UIElement::MENU_SEL_BG:
     case UIElement::SCROLLBAR:
@@ -862,9 +859,17 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
     if (!title_lines_.empty()) {
       SetColor(UIElement::INFO);
       y += DrawTextLines(x, y, title_lines_);
+      y += PixelsFromDp(16);
     }
-    y += menu_->DrawHeader(x, y);
-    y += PixelsFromDp(16);
+
+    int header_height = menu_->DrawHeader(x, y);
+    if (header_height > 0) {
+      y += header_height;
+      y += PixelsFromDp(8);
+    } else if (title_lines_.empty()) {
+      y += PixelsFromDp(16);
+    }
+
     menu_start_y_ = y;
     menu_->SetMenuHeight(std::max(0, ScreenHeight() - menu_start_y_));
     y += menu_->DrawItems(x, y, ScreenWidth(), IsLongPress());
