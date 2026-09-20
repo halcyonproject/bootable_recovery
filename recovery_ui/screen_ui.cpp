@@ -184,15 +184,9 @@ int TextMenu::DrawHeader(int x, int y) const {
 }
 
 int TextMenu::DrawItems(int x, int y, int screen_width, bool long_press) const {
-  int horizontal_rule_height = 8;
   int offset = 0;
   int padding = draw_funcs_.MenuItemPadding();
   int spacing = draw_funcs_.MenuItemSpacing();
-
-  draw_funcs_.SetColor(UIElement::MENU);
-  offset += horizontal_rule_height + 4;
-
-  int item_container_offset = offset; // store it for drawing scrollbar on most top
 
   size_t start = MenuStart();
   size_t end = MenuEnd();
@@ -208,25 +202,24 @@ int TextMenu::DrawItems(int x, int y, int screen_width, bool long_press) const {
     int bar_height = padding + char_height_ + padding;
     bool round_top = (i == start);
     bool round_bottom = (i == end - 1);
-    draw_funcs_.DrawHighlightBar(padding + x, y + offset, screen_width - (padding + x) * 2,
+    draw_funcs_.DrawHighlightBar(x, y + offset, screen_width - x * 2,
                                  bar_height, round_top, round_bottom);
 
     draw_funcs_.SetColor(selected ? UIElement::MENU_SEL_FG : UIElement::MENU);
-    offset += draw_funcs_.DrawTextLine(padding * 2 + x, y + offset, TextItem(i), false /* bold */);
+    offset += draw_funcs_.DrawTextLine(x + padding, y + offset, TextItem(i), false /* bold */);
     offset += spacing;
   }
-  offset += horizontal_rule_height;
 
   std::string unused;
   if (ItemsOverflow(&unused)) {
     int container_height = max_display_items_ * (2 * padding + char_height_ + spacing);
     int bar_height = container_height / (text_items_.size() - max_display_items_ + 1);
-    int start_y = y + item_container_offset + bar_height * menu_start_;
+    int start_y = y + bar_height * menu_start_;
     draw_funcs_.SetColor(UIElement::SCROLLBAR);
     draw_funcs_.DrawScrollBar(start_y, bar_height);
   }
 
-  return offset;
+  return offset > 0 ? (offset - spacing) : 0;
 }
 
 GraphicMenu::GraphicMenu(const GRSurface* graphic_headers,
@@ -767,7 +760,7 @@ void ScreenRecoveryUI::DrawTextIcon(int x, int y, const GRSurface* surface) cons
 
 int ScreenRecoveryUI::DrawTextLine(int x, int y, const std::string& line, bool bold) const {
   gr_text(gr_sys_font(), x, y, line.c_str(), bold);
-  return char_height_ + 4;
+  return char_height_ + std::max(4, PixelsFromDp(3));
 }
 
 int ScreenRecoveryUI::DrawTextLines(int x, int y, const std::vector<std::string>& lines) const {
@@ -863,19 +856,20 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
       gr_blit(back_icon_sel_ && menu_->selection() == -1 ? back_icon_sel_.get() : back_icon_.get(),
               0, 0, icon_w, icon_h, icon_x, icon_y);
     }
+    y += PixelsFromDp(8);
 
-    int x = margin_width_ + kMenuIndent;
+    int x = margin_width_ + MenuIndent();
     if (!title_lines_.empty()) {
       SetColor(UIElement::INFO);
       y += DrawTextLines(x, y, title_lines_);
     }
     y += menu_->DrawHeader(x, y);
-    menu_start_y_ = y + 12; // Skip horizontal rule and some margin
+    y += PixelsFromDp(16);
+    menu_start_y_ = y;
     menu_->SetMenuHeight(std::max(0, ScreenHeight() - menu_start_y_));
     y += menu_->DrawItems(x, y, ScreenWidth(), IsLongPress());
     if (!help_message.empty()) {
-      y -= MenuItemSpacing();
-      y += 12; // Skip horizontal rule and some margin
+      y += PixelsFromDp(16);
       SetColor(UIElement::INFO);
       y += DrawTextLines(x, y, help_message);
     }
@@ -896,10 +890,8 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
 
 // Draws the battery capacity on the screen. Should only be called with updateMutex locked.
 void ScreenRecoveryUI::draw_battery_capacity_locked() {
-  int x;
   auto& logo = (fastbootd_logo_enabled_ && fastbootd_logo_) ? fastbootd_logo_ : default_logo;
-  int y = margin_height_ + gr_get_height(logo.get());
-  int icon_x, icon_y, icon_h, icon_w;
+  int y = margin_height_ + gr_get_height(logo.get()) + PixelsFromDp(8);
 
   if (is_battery_less) return;
 
@@ -912,42 +904,56 @@ void ScreenRecoveryUI::draw_battery_capacity_locked() {
     batt_capacity.pop_back();
 
   if (menu_) {
-    // Battery icon
-    x = (ScreenWidth() - margin_width_ * 2 - kMenuIndent) - char_width_;
+    int x_margin = margin_width_ + MenuIndent();
 
+    // Total battery icon dimensions
+    int batt_w = char_width_;
+    int batt_h = char_height_ * 3 / 4;
+    int tip_h = std::max(2, char_height_ / 10);
+    int tip_w = batt_w / 3;
+
+    // Center icon vertically with the text line at y
+    int batt_top = y + (char_height_ - batt_h - tip_h) / 2;
+
+    // Right edge aligned with card right edge: ScreenWidth() - x_margin
+    int icon_x = ScreenWidth() - x_margin - batt_w;
+
+    // Tip / nub
+    int tip_x = icon_x + (batt_w - tip_w) / 2;
+    int tip_y = batt_top;
     SetColor(UIElement::INFO);
+    gr_fill(tip_x, tip_y, tip_x + tip_w, tip_y + tip_h);
 
-    // Top
-    icon_x = x + char_width_ / 3;
-    icon_y = y;
-    icon_w = char_width_ / 3;
-    icon_h = char_height_ / 12;
-    gr_fill(icon_x, icon_y, icon_x + icon_w, icon_y + icon_h);
+    // Main rect outline
+    int body_x = icon_x;
+    int body_y = tip_y + tip_h;
+    gr_fill(body_x, body_y, body_x + batt_w, body_y + batt_h);
 
-    // Main rect
-    icon_x = x;
-    icon_y = y + icon_h;
-    icon_w = char_width_;
-    icon_h = char_height_ - (char_height_ / 12);
-    gr_fill(icon_x, icon_y, icon_x + icon_w, icon_y + icon_h);
+    // Inner capacity
+    int border = std::max(1, PixelsFromDp(1));
+    int inner_x = body_x + border;
+    int inner_y = body_y + border;
+    int inner_w = batt_w - 2 * border;
+    int inner_h = batt_h - 2 * border;
 
-    // Capacity
-    if (batt_capacity_ <= 15) SetColor(UIElement::BATTERY_LOW);
-    icon_x = x + char_width_ / 6;
-    icon_y = y + char_height_ / 12;
-    icon_w = char_width_ - (2 * char_width_ / 6);
-    icon_h = char_height_ - (3 * char_height_ / 12);
-    int cap_h = icon_h * batt_capacity_ / 100;
-    gr_fill(icon_x, icon_y + icon_h - cap_h, icon_x + icon_w, icon_y + icon_h);
+    int fill_h = inner_h * std::clamp(batt_capacity_, 0, 100) / 100;
+    // Empty portion (black)
     gr_color(0, 0, 0, 255);
-    gr_fill(icon_x, icon_y, icon_x + icon_w, icon_y + icon_h - cap_h);
+    gr_fill(inner_x, inner_y, inner_x + inner_w, inner_y + inner_h - fill_h);
 
-    x -= char_width_;  // Separator
+    // Capacity fill
+    if (batt_capacity_ <= 15) {
+      SetColor(UIElement::BATTERY_LOW);
+    } else {
+      SetColor(UIElement::INFO);
+    }
+    gr_fill(inner_x, inner_y + inner_h - fill_h, inner_x + inner_w, inner_y + inner_h);
 
     // Battery text
     SetColor(UIElement::INFO);
-    x -= batt_capacity.size() * char_width_;
-    DrawTextLine(x, icon_y, batt_capacity.c_str(), false);
+    int text_gap = std::max(4, char_width_ / 3);
+    int text_x = icon_x - text_gap - batt_capacity.size() * char_width_;
+    DrawTextLine(text_x, y, batt_capacity.c_str(), false);
   }
 }
 
