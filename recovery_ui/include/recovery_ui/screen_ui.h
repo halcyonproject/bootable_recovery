@@ -361,6 +361,10 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
     return std::max(4, PixelsFromDp(3));
   }
 
+  int MenuIndent() const {
+    return std::max(kMenuIndent, PixelsFromDp(16));
+  }
+
  protected:
   static constexpr int kMenuIndent = 24;
 
